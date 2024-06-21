@@ -1,5 +1,9 @@
 package com.enterprise.accounts.controller;
 
+import java.util.concurrent.TimeoutException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -24,6 +28,7 @@ import com.enterprise.accounts.dto.ErrorResponseDto;
 import com.enterprise.accounts.dto.ResponseDto;
 import com.enterprise.accounts.service.IAccountsService;
 
+import io.github.resilience4j.retry.annotation.Retry;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -42,6 +47,8 @@ import lombok.AllArgsConstructor;
 @Validated
 public class AccountsController {
 
+	private static final Logger logger = LoggerFactory.getLogger(CustomerController.class);
+	
 	private final IAccountsService iAccountService;
 	
 	public AccountsController(IAccountsService iAccountService) {
@@ -172,11 +179,21 @@ public class AccountsController {
 			)
 		}
 	)
+    @Retry(name="getBuildInfo",fallbackMethod = "getBuildInfoFallback")
     @GetMapping("/build-info")
-    public ResponseEntity<String> getBuilInfo() {
+    public ResponseEntity<String> getBuilInfo() throws TimeoutException {
+    	logger.debug("getBuildInfo() method Invoked");
+    	//throw new TimeoutException();
     	return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(buildVersion);
+    }
+    
+    public ResponseEntity<String> getBuildInfoFallback(Throwable throwable) {
+    	logger.debug("getBuildInfoFallback() method Invoked");
+    	return ResponseEntity
+                .status(HttpStatus.OK)
+                .body("0.9");
     }
     
     @Operation(
